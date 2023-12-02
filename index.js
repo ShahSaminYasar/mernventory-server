@@ -15,7 +15,7 @@ const secret = "admin";
 // middleware
 app.use(
   cors({
-    origin: ["http://localhost:5173"],
+    origin: ["https://mernventory.web.app"],
     credentials: true,
   })
 );
@@ -45,11 +45,11 @@ async function run() {
 
     app.post("/users", async (req, res) => {
       const user = req.body;
-      /*   const query = { email: user.email }
-              const existingUser = await userCollection.findOne(query);
-              if (existingUser) {
-                  return res.send({ message: "user asa", insertedId: null })
-              } */
+      const query = { email: user?.email };
+      const existingUser = await userCollection.findOne(query);
+      if (existingUser) {
+        return res.send({ message: "user asa", insertedId: null });
+      }
       user.role = "user";
       const result = await userCollection.insertOne(user);
       res.send(result);
@@ -116,12 +116,30 @@ async function run() {
     });
 
     app.post("/jwt", async (req, res) => {
-      const email = req.body.email;
+      const userData = req.body;
+      // console.log("in JWT", userData);
+      const email = userData.email;
       // console.log(email);
+
+      let user = userData;
+
+      const check = await userCollection.findOne({ email: email });
+      // console.log(email, check);
+
+      if (!check) {
+        user.role = "user";
+        // console.log("making user", user);
+        const upload = await userCollection.insertOne(user);
+        // console.log("Uploaded: ", user);
+      } else {
+        console.log("Found: ", check);
+        user = check;
+      }
+
       const token = jwt.sign({ email }, secret, {
         expiresIn: "1h",
       });
-      const user = await userCollection.findOne({ email: email });
+
       // console.log(user, token);
       if (token) {
         return res
@@ -132,7 +150,8 @@ async function run() {
           })
           .send(user);
       }
-      console.log(token);
+      // console.log(token);
+      // console.log("User returned: ", user);
     });
 
     app.post("/shop", async (req, res) => {
